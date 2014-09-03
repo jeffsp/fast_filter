@@ -4,7 +4,7 @@
 #include <random>
 #include <vector>
 
-void test4 ()
+void test5 ()
 {
     const size_t M = 1024;
     const size_t N = 1024;
@@ -29,7 +29,7 @@ void test4 ()
 
     // compute rms contrast fast
     start_time = chrono::high_resolution_clock::now ();
-    fast_filter<rms_contrast<double>> (x, y, M, N, K);
+    fast_filter<fast_rms_contrast<double>> (x, y, M, N, K);
     end_time = chrono::high_resolution_clock::now ();
     auto t2 = chrono::duration_cast<chrono::milliseconds>(end_time - start_time).count ();
     cout << "t2: " << t2 << "ms" << endl;
@@ -38,5 +38,5 @@ void test4 ()
 
 void process ()
 {
-    test4 ();
+    test5 ();
 }

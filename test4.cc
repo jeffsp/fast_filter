@@ -34,22 +34,22 @@ void test4 ()
     vector<U> y1 (M * N);
     vector<U> y2 (M * N);
     filter<average<T>> (x, y1, M, N, K);
-    fast_filter<average<T>> (x, y2, M, N, K);
+    fast_filter<fast_average<T>> (x, y2, M, N, K);
     verify (y1 == y2);
 
     // compute variance
     filter<variance<T>> (x, y1, M, N, K);
-    fast_filter<variance<T>> (x, y2, M, N, K);
+    fast_filter<fast_variance<T>> (x, y2, M, N, K);
     verify (y1 == y2);
 
     // compute stddev
     filter<stddev<T>> (x, y1, M, N, K);
-    fast_filter<stddev<T>> (x, y2, M, N, K);
+    fast_filter<fast_stddev<T>> (x, y2, M, N, K);
     verify (y1 == y2);
 
     // compute rms contrast
     filter<rms_contrast<T>> (x, y1, M, N, K);
-    fast_filter<rms_contrast<T>> (x, y2, M, N, K);
+    fast_filter<fast_rms_contrast<T>> (x, y2, M, N, K);
     verify (y1 == y2);
 }
 
