@@ -5,20 +5,30 @@ SHELL=/bin/bash
 CCFILES=$(shell ls -1tr *.cc)
 TARGETS=$(basename $(CCFILES))
 
-build:
-	@for i in $(TARGETS); do \
-		echo building $$i.cc...; \
-		g++ -std=c++11 -Werror -Wall -o $$i $$i.cc; \
-	done
+# Dummy targets
+BUILD_TARGETS=$(addsuffix .build,$(TARGETS))
+RUN_TARGETS=$(addsuffix .run,$(TARGETS))
+CLEAN_TARGETS=$(addsuffix .clean,$(TARGETS))
 
-run:
-	@for i in $(TARGETS); do \
-		echo running $$i; \
-		./$$i; \
-	done
+CXX=g++
+CXXFLAGS=-std=c++11 -Werror -Wall
 
-clean:
-	@for i in $(TARGETS); do \
-		echo removing $$i; \
-		rm -f $$i; \
-	done
+default:
+	$(MAKE) -j build
+
+build: $(BUILD_TARGETS)
+
+%.build: %.cc
+	$(CXX) $(CXXFLAGS) -o $* $<
+
+run: $(RUN_TARGETS)
+
+%.run: %.cc
+	@echo running $*
+	./$*
+
+clean: $(CLEAN_TARGETS)
+
+%.clean: %.cc
+	@echo removing $$i
+	rm -f $*
