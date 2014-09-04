@@ -11,7 +11,9 @@ RUN_TARGETS=$(addsuffix .run,$(TARGETS))
 CLEAN_TARGETS=$(addsuffix .clean,$(TARGETS))
 
 CXX=g++
-CXXFLAGS=-std=c++11 -Werror -Wall
+CXXFLAGS_DEBUG=-std=c++11 -Werror -Wall
+CXXFLAGS_RELEASE=-std=c++11 -Werror -Wall -O2 -DNDEBUG
+CXXFLAGS=$(CXXFLAGS_RELEASE)
 
 default:
 	$(MAKE) -j build
