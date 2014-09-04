@@ -18,7 +18,10 @@ void print (ostream &s, const T &p, const size_t rows, const size_t cols)
     for (size_t i = 0; i < rows; ++i)
     {
         for (size_t j = 0; j < cols; ++j)
-            s << ' ' << p [index (i, j, cols)];
+            if (is_integral<typename T::value_type>::value)
+                s << ' ' << int (p [index (i, j, cols)]);
+            else
+                s << ' ' << p [index (i, j, cols)];
         s << endl;
     }
 }

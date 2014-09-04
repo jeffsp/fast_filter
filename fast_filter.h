@@ -10,6 +10,7 @@
 #include <cmath>
 #include <iostream>
 #include <type_traits>
+#include <vector>
 
 namespace fast_filter_ops
 {
@@ -18,22 +19,11 @@ namespace fast_filter_ops
         return i * cols + j;
     }
 
-    template<typename T> struct sum_traits { typedef T sum_type; };
-    template<> struct sum_traits<char> { typedef long sum_type; };
-    template<> struct sum_traits<short> { typedef long sum_type; };
-    template<> struct sum_traits<int> { typedef long sum_type; };
-    template<> struct sum_traits<unsigned char> { typedef unsigned long sum_type; };
-    template<> struct sum_traits<unsigned short> { typedef unsigned long sum_type; };
-    template<> struct sum_traits<unsigned int> { typedef unsigned long sum_type; };
-    template<> struct sum_traits<float> { typedef double sum_type; };
-    template<> struct sum_traits<double> { typedef double sum_type; };
-
-    template<typename T>
     class average
     {
         private:
         size_t total;
-        typename sum_traits<T>::sum_type sum;
+        double sum;
 
         public:
         average ()
@@ -41,24 +31,24 @@ namespace fast_filter_ops
             , sum (0)
         {
         }
+        template<typename T>
         void update (const T &x)
         {
             ++total;
             sum += x;
         }
-        double result ()
+        double result () const
         {
-            return static_cast<double> (sum) / total;
+            return sum / total;
         }
     };
 
-    template<typename T>
     class variance
     {
         private:
         size_t total;
-        typename sum_traits<T>::sum_type sum;
-        typename sum_traits<T>::sum_type sum2;
+        double sum;
+        double sum2;
 
         public:
         variance ()
@@ -67,26 +57,27 @@ namespace fast_filter_ops
             , sum2 (0)
         {
         }
+        template<typename T>
         void update (const T &x)
         {
             ++total;
             sum += x;
             sum2 += (x * x);
         }
-        double result ()
+        double result () const
         {
-            const double mean = static_cast<double> (sum) / total;
-            return static_cast<double> (sum2) / total - mean * mean;
+            const double mean = sum / total;
+            return sum2 / total - mean * mean;
         }
     };
 
-    template<typename T>
     class stddev
     {
         private:
-        variance<T> v;
+        variance v;
 
         public:
+        template<typename T>
         void update (const T &x)
         {
             v.update (x);
@@ -97,12 +88,12 @@ namespace fast_filter_ops
         }
     };
 
-    template<typename T>
-    using rms_contrast = stddev<T>;
+    class rms_contrast : public stddev { };
 
-    template<typename OP,typename T,typename U>
-    void filter (const T &p, U &q, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
+    template<typename OP,typename T>
+    T slow_filter (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
+        T q (p.size ());
         for (size_t i = 0; i + krows < rows + 1; ++i)
         {
             for (size_t j = 0; j + kcols < cols + 1; ++j)
@@ -120,130 +111,161 @@ namespace fast_filter_ops
                 const size_t n = index (i + krows / 2, j + kcols / 2, cols);
                 assert (n < q.size ());
                 const double y = op.result ();
-                if (std::is_integral<typename U::value_type>::value)
+                if (std::is_integral<typename T::value_type>::value)
                     q[n] = ::round (y);
                 else
                     q[n] = y;
             }
         }
+        return q;
     }
 
-    template<typename B,typename T,typename U>
-    void filter (const T &p, U &q, const size_t rows, const size_t cols, const size_t k)
+    template<typename OP,typename T>
+    T slow_filter (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
-        return filter<B,T,U> (p, q, rows, cols, k, k);
+        return slow_filter<OP,T> (p, rows, cols, k, k);
     }
 
     template<typename T>
-    class fast_average
+    T slow_average (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
-        private:
-        size_t total;
-        typename sum_traits<T>::sum_type sum;
-
-        public:
-        fast_average ()
-            : total (0)
-            , sum (0)
-        {
-        }
-        void update (const T &x)
-        {
-            ++total;
-            sum += x;
-        }
-        double result ()
-        {
-            return static_cast<double> (sum) / total;
-        }
-    };
+        return slow_filter<average> (p, rows, cols, krows, kcols);
+    }
 
     template<typename T>
-    class fast_variance
+    T slow_average (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
-        private:
-        size_t total;
-        typename sum_traits<T>::sum_type sum;
-        typename sum_traits<T>::sum_type sum2;
-
-        public:
-        fast_variance ()
-            : total (0)
-            , sum (0)
-            , sum2 (0)
-        {
-        }
-        void update (const T &x)
-        {
-            ++total;
-            sum += x;
-            sum2 += (x * x);
-        }
-        double result ()
-        {
-            const double mean = static_cast<double> (sum) / total;
-            return static_cast<double> (sum2) / total - mean * mean;
-        }
-    };
+        return slow_average (p, rows, cols, k, k);
+    }
 
     template<typename T>
-    class fast_stddev
+    T slow_variance (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
-        private:
-        fast_variance<T> v;
-
-        public:
-        void update (const T &x)
-        {
-            v.update (x);
-        }
-        double result ()
-        {
-            return sqrt (v.result ());
-        }
-    };
+        return slow_filter<variance> (p, rows, cols, krows, kcols);
+    }
 
     template<typename T>
-    using fast_rms_contrast = fast_stddev<T>;
-
-    template<typename OP,typename T,typename U>
-    void filter_row (const size_t row, const T &p, U &q, const size_t cols, const size_t kcols)
+    T slow_variance (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
+        return slow_variance (p, rows, cols, k, k);
+    }
+
+    template<typename T>
+    T slow_stddev (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
+    {
+        return slow_filter<stddev> (p, rows, cols, krows, kcols);
+    }
+
+    template<typename T>
+    T slow_stddev (const T &p, const size_t rows, const size_t cols, const size_t k)
+    {
+        return slow_stddev (p, rows, cols, k, k);
+    }
+
+    template<typename T>
+    T slow_rms_contrast (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
+    {
+        return slow_filter<rms_contrast> (p, rows, cols, krows, kcols);
+    }
+
+    template<typename T>
+    T slow_rms_contrast (const T &p, const size_t rows, const size_t cols, const size_t k)
+    {
+        return slow_rms_contrast (p, rows, cols, k, k);
+    }
+
+    template<typename T,typename U>
+    void block_sum (const size_t row, const T &p, U &q, const size_t cols, const size_t kcols)
+    {
+        double sum = 0;
         for (size_t j = 0; j < cols; ++j)
         {
-            OP op;
             const size_t n1 = index (row, j, cols);
             assert (n1 < p.size ());
-            op.update (p[n1]);
+            sum += p[n1];
+            // make sure we have enough in the sum
             if (j + 1 < kcols)
                 continue;
-            // note that we are writing q transposed
+            // write to q's transposed location
             const size_t n2 = index (j - kcols / 2, row, cols);
             assert (n2 < q.size ());
-            const double y = op.result ();
-            if (std::is_integral<typename U::value_type>::value)
-                q[n2] = ::round (y);
-            else
-                q[n2] = y;
+            q[n2] = sum;
+            // remove old pixel value
+            const size_t n3 = index (row, j - kcols + 1, cols);
+            assert (n3 < p.size ());
+            sum -= p[n3];
         }
     }
 
-    template<typename OP,typename T,typename U>
-    void fast_filter (const T &p, U &q, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
+    template<typename T>
+    T fast_average (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
-        U tmp (q);
-        // pass 1: filter p's rows and write to tmp
-        for (size_t i = 0; i < rows; ++i)
-            filter_row<OP> (i, p, tmp, cols, kcols);
+        std::vector<double> tmp1 (p.size ());
 
-        // pass 2: filter tmp's rows and write to q
+        // pass 1: block sum p's rows and write to tmp
+        for (size_t i = 0; i < rows; ++i)
+            block_sum (i, p, tmp1, cols, kcols);
+
+        std::vector<double> tmp2 (p.size ());
+
+        // pass 2: block sum tmp's rows and write to q
         for (size_t j = 0; j < cols; ++j)
-            filter_row<OP> (j, tmp, q, rows, krows);
+            block_sum (j, tmp1, tmp2, rows, krows);
+
+        T q (p);
+
+        // pass 3: compute average
+        for (size_t i = 0; i < q.size (); ++i)
+        {
+            const double y = tmp2[i] / (krows * kcols);
+            if (std::is_integral<typename T::value_type>::value)
+                q[i] = ::round (y);
+            else
+                q[i] = y;
+        }
+
+        return q;
     }
 
-    template<typename OP,typename T,typename U>
-    void fast_filter (const T &p, U &q, const size_t rows, const size_t cols, const size_t k)
+    template<typename T>
+    T fast_average (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
-        return fast_filter<OP,T,U> (p, q, rows, cols, k, k);
+        return fast_average (p, rows, cols, k, k);
+    }
+
+    template<typename T>
+    T fast_variance (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
+    {
+        return p;
+    }
+
+    template<typename T>
+    T fast_variance (const T &p, const size_t rows, const size_t cols, const size_t k)
+    {
+        return fast_variance (p, rows, cols, k, k);
+    }
+
+    template<typename T>
+    T fast_stddev (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
+    {
+        return p;
+    }
+
+    template<typename T>
+    T fast_stddev (const T &p, const size_t rows, const size_t cols, const size_t k)
+    {
+        return fast_stddev (p, rows, cols, k, k);
+    }
+
+    template<typename T>
+    T fast_rms_contrast (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
+    {
+        return p;
+    }
+
+    template<typename T>
+    T fast_rms_contrast (const T &p, const size_t rows, const size_t cols, const size_t k)
+    {
+        return fast_rms_contrast (p, rows, cols, k, k);
     }
 }
