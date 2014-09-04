@@ -175,14 +175,14 @@ namespace fast_filter_ops
     }
 
     template<typename T,typename U>
-    void block_sum (const size_t row, const T &p, U &q, const size_t cols, const size_t kcols)
+    void block_sum (const size_t row, const T &p, U &q, const size_t cols, const size_t kcols, const size_t exp)
     {
         double sum = 0;
         for (size_t j = 0; j < cols; ++j)
         {
             const size_t n1 = index (row, j, cols);
             assert (n1 < p.size ());
-            sum += p[n1];
+            sum += pow (p[n1], exp);
             // make sure we have enough in the sum
             if (j + 1 < kcols)
                 continue;
@@ -193,7 +193,7 @@ namespace fast_filter_ops
             // remove old pixel value
             const size_t n3 = index (row, j - kcols + 1, cols);
             assert (n3 < p.size ());
-            sum -= p[n3];
+            sum -= pow (p[n3], exp);
         }
     }
 
@@ -202,17 +202,17 @@ namespace fast_filter_ops
     {
         std::vector<double> tmp1 (p.size ());
 
-        // pass 1: block sum p's rows and write to tmp
+        // pass 1: block sum p's rows and write to tmp1
         for (size_t i = 0; i < rows; ++i)
-            block_sum (i, p, tmp1, cols, kcols);
+            block_sum (i, p, tmp1, cols, kcols, 1);
 
         std::vector<double> tmp2 (p.size ());
 
-        // pass 2: block sum tmp's rows and write to q
+        // pass 2: block sum tmp's rows and write to tmp2
         for (size_t j = 0; j < cols; ++j)
-            block_sum (j, tmp1, tmp2, rows, krows);
+            block_sum (j, tmp1, tmp2, rows, krows, 1);
 
-        T q (p);
+        T q (p.size ());
 
         // pass 3: compute average
         for (size_t i = 0; i < q.size (); ++i)
@@ -236,7 +236,41 @@ namespace fast_filter_ops
     template<typename T>
     T fast_variance (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
-        return p;
+        std::vector<double> tmp1_1 (p.size ());
+        std::vector<double> tmp1_2 (p.size ());
+
+        // pass 1: block sum p's rows and write to tmp1
+        for (size_t i = 0; i < rows; ++i)
+        {
+            block_sum (i, p, tmp1_1, cols, kcols, 1);
+            block_sum (i, p, tmp1_2, cols, kcols, 2);
+        }
+
+        std::vector<double> tmp2_1 (p.size ());
+        std::vector<double> tmp2_2 (p.size ());
+
+        // pass 2: block sum tmp's rows and write to tmp2
+        for (size_t j = 0; j < cols; ++j)
+        {
+            block_sum (j, tmp1_1, tmp2_1, rows, krows, 1);
+            block_sum (j, tmp1_2, tmp2_2, rows, krows, 1);
+        }
+
+        T q (p.size ());
+
+        // pass 3: compute variance
+        for (size_t i = 0; i < q.size (); ++i)
+        {
+            const double y1 = tmp2_1[i] / (krows * kcols);
+            const double y2 = tmp2_2[i] / (krows * kcols);
+            // variance is E(x^2)-E(x)^2
+            const double y = y2 - y1 * y1;
+            if (std::is_integral<typename T::value_type>::value)
+                q[i] = ::round (y);
+            else
+                q[i] = y;
+        }
+        return q;
     }
 
     template<typename T>
@@ -248,7 +282,41 @@ namespace fast_filter_ops
     template<typename T>
     T fast_stddev (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
-        return p;
+        std::vector<double> tmp1_1 (p.size ());
+        std::vector<double> tmp1_2 (p.size ());
+
+        // pass 1: block sum p's rows and write to tmp1
+        for (size_t i = 0; i < rows; ++i)
+        {
+            block_sum (i, p, tmp1_1, cols, kcols, 1);
+            block_sum (i, p, tmp1_2, cols, kcols, 2);
+        }
+
+        std::vector<double> tmp2_1 (p.size ());
+        std::vector<double> tmp2_2 (p.size ());
+
+        // pass 2: block sum tmp's rows and write to tmp2
+        for (size_t j = 0; j < cols; ++j)
+        {
+            block_sum (j, tmp1_1, tmp2_1, rows, krows, 1);
+            block_sum (j, tmp1_2, tmp2_2, rows, krows, 1);
+        }
+
+        T q (p.size ());
+
+        // pass 3: compute variance
+        for (size_t i = 0; i < q.size (); ++i)
+        {
+            const double y1 = tmp2_1[i] / (krows * kcols);
+            const double y2 = tmp2_2[i] / (krows * kcols);
+            // variance is E(x^2)-E(x)^2
+            const double y = y2 - y1 * y1;
+            if (std::is_integral<typename T::value_type>::value)
+                q[i] = ::round (sqrt (y));
+            else
+                q[i] = sqrt (y);
+        }
+        return q;
     }
 
     template<typename T>
@@ -260,7 +328,7 @@ namespace fast_filter_ops
     template<typename T>
     T fast_rms_contrast (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
-        return p;
+        return fast_stddev (p, rows, cols, krows, kcols);
     }
 
     template<typename T>

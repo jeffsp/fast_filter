@@ -6,9 +6,9 @@
 
 void test5 ()
 {
-    const size_t M = 1024;
-    const size_t N = 1024;
-    const size_t K = 13;
+    const size_t M = 2048;
+    const size_t N = 2048;
+    const size_t K = 31;
     vector<int> x (M * N);
 
     // draw random values from a normal distribution

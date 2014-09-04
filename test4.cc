@@ -20,12 +20,6 @@ void test4 (double mean, double variance)
     // compute average
     vector<T> y1 = slow_average (x, M, N, K);
     vector<T> y2 = fast_average (x, M, N, K);
-    //clog << "x" << endl;
-    //print (clog, x, M, N);
-    //clog << "y1" << endl;
-    //print (clog, y1, M, N);
-    //clog << "y2" << endl;
-    //print (clog, y2, M, N);
     verify (y1 == y2);
 
     // compute variance
