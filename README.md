@@ -20,4 +20,21 @@ This code supports:
 
 ## Example
 
-&copy; Jeffrey S. Perry 2007-2014
+    jsp@uni ~/Projects/fast_filter $ make run
+    running test1
+    ./test1
+    running test2
+    ./test2
+    running test3
+    ./test3
+    running test4
+    ./test4
+    running test5
+    ./test5
+    t1: 3277ms
+    t2: 166ms
+    19.741X speedup
+
+## See also
+
+http://elynxsdk.free.fr/ext-docs/Blur/Fast_box_blur.pdf
