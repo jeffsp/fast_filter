@@ -3,6 +3,7 @@
 #include <random>
 #include <vector>
 
+// Make sure output of naive versions and fast versions are identical
 template<typename T>
 void test4 (double mean, double variance)
 {

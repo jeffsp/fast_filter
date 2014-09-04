@@ -4,6 +4,7 @@
 #include <random>
 #include <vector>
 
+// Get some timing results
 void test5 ()
 {
     const size_t M = 2048;

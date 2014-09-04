@@ -14,11 +14,19 @@
 
 namespace fast_filter_ops
 {
+    /// @brief index into an image
+    ///
+    /// @param i rows
+    /// @param j col
+    /// @param cols columns in the image
+    ///
+    /// @return the 1d image index
     size_t index (const size_t i, const size_t j, const size_t cols)
     {
         return i * cols + j;
     }
 
+    /// @brief policy class for computing the average
     class average
     {
         private:
@@ -26,23 +34,32 @@ namespace fast_filter_ops
         double sum;
 
         public:
+        /// @brief ctor
         average ()
             : total (0)
             , sum (0)
         {
         }
+        /// @brief update the block totals
+        ///
+        /// @tparam T pixel type
+        /// @param x pixel value
         template<typename T>
         void update (const T &x)
         {
             ++total;
             sum += x;
         }
+        /// @brief get result for a block
+        ///
+        /// @return the average
         double result () const
         {
             return sum / total;
         }
     };
 
+    /// @brief policy class for computing the variance
     class variance
     {
         private:
@@ -51,12 +68,17 @@ namespace fast_filter_ops
         double sum2;
 
         public:
+        /// @brief ctor
         variance ()
             : total (0)
             , sum (0)
             , sum2 (0)
         {
         }
+        /// @brief update the block totals
+        ///
+        /// @tparam T pixel type
+        /// @param x pixel value
         template<typename T>
         void update (const T &x)
         {
@@ -64,6 +86,9 @@ namespace fast_filter_ops
             sum += x;
             sum2 += (x * x);
         }
+        /// @brief get result for a block
+        ///
+        /// @return the variance
         double result () const
         {
             const double mean = sum / total;
@@ -71,25 +96,45 @@ namespace fast_filter_ops
         }
     };
 
+    /// @brief policy class for computing the standard deviation
     class stddev
     {
         private:
         variance v;
 
         public:
+        /// @brief update the block totals
+        ///
+        /// @tparam T pixel type
+        /// @param x pixel value
         template<typename T>
         void update (const T &x)
         {
             v.update (x);
         }
+        /// @brief get result for a block
+        ///
+        /// @return the standard deviation
         double result ()
         {
             return sqrt (v.result ());
         }
     };
 
+    /// @brief computation for rms contrast is the same as that for standard deviation
     class rms_contrast : public stddev { };
 
+    /// @brief support for naive average, variance, stddev, rms_contrast
+    ///
+    /// @tparam OP operation policy class
+    /// @tparam T image type
+    /// @param p input image
+    /// @param rows image rows
+    /// @param cols image cols
+    /// @param krows kernel rows
+    /// @param kcols kernel cols
+    ///
+    /// @return image containing variances over each block
     template<typename OP,typename T>
     T slow_filter (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
@@ -120,60 +165,79 @@ namespace fast_filter_ops
         return q;
     }
 
+    /// @brief helper function
     template<typename OP,typename T>
     T slow_filter (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
         return slow_filter<OP,T> (p, rows, cols, k, k);
     }
 
+    /// @brief helper function
     template<typename T>
     T slow_average (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
         return slow_filter<average> (p, rows, cols, krows, kcols);
     }
 
+    /// @brief helper function
     template<typename T>
     T slow_average (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
         return slow_average (p, rows, cols, k, k);
     }
 
+    /// @brief helper function
     template<typename T>
     T slow_variance (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
         return slow_filter<variance> (p, rows, cols, krows, kcols);
     }
 
+    /// @brief helper function
     template<typename T>
     T slow_variance (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
         return slow_variance (p, rows, cols, k, k);
     }
 
+    /// @brief helper function
     template<typename T>
     T slow_stddev (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
         return slow_filter<stddev> (p, rows, cols, krows, kcols);
     }
 
+    /// @brief helper function
     template<typename T>
     T slow_stddev (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
         return slow_stddev (p, rows, cols, k, k);
     }
 
+    /// @brief helper function
     template<typename T>
     T slow_rms_contrast (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
         return slow_filter<rms_contrast> (p, rows, cols, krows, kcols);
     }
 
+    /// @brief helper function
     template<typename T>
     T slow_rms_contrast (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
         return slow_rms_contrast (p, rows, cols, k, k);
     }
 
+    /// @brief support for fast block ops
+    ///
+    /// @tparam T input image type
+    /// @tparam U output image type
+    /// @param row row over which to operate
+    /// @param p image image
+    /// @param q output image
+    /// @param cols input/output image cols
+    /// @param kcols kernel columns
+    /// @param exp exponent of sum
     template<typename T,typename U>
     void block_sum (const size_t row, const T &p, U &q, const size_t cols, const size_t kcols, const size_t exp)
     {
@@ -197,6 +261,16 @@ namespace fast_filter_ops
         }
     }
 
+    /// @brief get block averages
+    ///
+    /// @tparam T image type
+    /// @param p input image
+    /// @param rows image rows
+    /// @param cols image cols
+    /// @param krows kernel rows
+    /// @param kcols kernel cols
+    ///
+    /// @return output image
     template<typename T>
     T fast_average (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
@@ -227,12 +301,23 @@ namespace fast_filter_ops
         return q;
     }
 
+    /// @brief helper function
     template<typename T>
     T fast_average (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
         return fast_average (p, rows, cols, k, k);
     }
 
+    /// @brief get block variances
+    ///
+    /// @tparam T image type
+    /// @param p input image
+    /// @param rows image rows
+    /// @param cols image cols
+    /// @param krows kernel rows
+    /// @param kcols kernel cols
+    ///
+    /// @return output image
     template<typename T>
     T fast_variance (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
@@ -273,12 +358,23 @@ namespace fast_filter_ops
         return q;
     }
 
+    /// @brief helper function
     template<typename T>
     T fast_variance (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
         return fast_variance (p, rows, cols, k, k);
     }
 
+    /// @brief get block standard deviations
+    ///
+    /// @tparam T image type
+    /// @param p input image
+    /// @param rows image rows
+    /// @param cols image cols
+    /// @param krows kernel rows
+    /// @param kcols kernel cols
+    ///
+    /// @return output image
     template<typename T>
     T fast_stddev (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
@@ -319,18 +415,21 @@ namespace fast_filter_ops
         return q;
     }
 
+    /// @brief helper function
     template<typename T>
     T fast_stddev (const T &p, const size_t rows, const size_t cols, const size_t k)
     {
         return fast_stddev (p, rows, cols, k, k);
     }
 
+    /// @brief helper function
     template<typename T>
     T fast_rms_contrast (const T &p, const size_t rows, const size_t cols, const size_t krows, const size_t kcols)
     {
         return fast_stddev (p, rows, cols, krows, kcols);
     }
 
+    /// @brief helper function
     template<typename T>
     T fast_rms_contrast (const T &p, const size_t rows, const size_t cols, const size_t k)
     {

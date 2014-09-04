@@ -3,6 +3,7 @@
 #include <random>
 #include <vector>
 
+// Verify that naive implementations produce reasonable output
 template<typename T>
 void test3 ()
 {
@@ -50,5 +51,6 @@ void test3 ()
 
 void process ()
 {
+    test3<float> ();
     test3<double> ();
 }

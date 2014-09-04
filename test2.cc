@@ -1,6 +1,7 @@
 #include "main.h"
 #include <vector>
 
+// Verify that the naive implementation of average() works
 template<typename T>
 void test2 ()
 {
